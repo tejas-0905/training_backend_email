@@ -131,6 +131,13 @@ def build_otp_email_html(name: str, otp: str) -> str:
 """
 
 
+def build_plain_otp_email(name: str, otp: str) -> str:
+    return (
+        f"Hi {name or 'there'}, your verification code is {otp}. "
+        f"It expires in {OTP_EXPIRY_MINUTES} minutes."
+    )
+
+
 def send_otp_email(email: str, otp: str, name: str) -> None:
     zoho_email = os.getenv("ZOHO_EMAIL", "").strip()
     zoho_app_password = os.getenv("ZOHO_APP_PASSWORD", "").strip().replace(" ", "")
@@ -157,13 +164,12 @@ def send_otp_email(email: str, otp: str, name: str) -> None:
         raise RuntimeError("ZOHO_EMAIL and ZOHO_APP_PASSWORD are required")
 
     message = MIMEMultipart("alternative")
-    message["Subject"] = "Verify your training account"
-    message["From"] = zoho_email
+    message["Subject"] = "Verify your email"
+    message["From"] = f"HHT Technologies <{zoho_email}>"
     message["To"] = email
     message.attach(
         MIMEText(
-            f"Hi {name or 'there'}, your verification code is {otp}. "
-            f"It expires in {OTP_EXPIRY_MINUTES} minutes.",
+            build_plain_otp_email(name, otp),
             "plain",
         )
     )
