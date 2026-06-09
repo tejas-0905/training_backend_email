@@ -20,7 +20,7 @@ allowed_origins = [
     origin.strip()
     for origin in os.getenv(
         "FRONTEND_URL",
-        "http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173",
+        "*",
     ).split(",")
     if origin.strip()
 ]
