@@ -140,8 +140,19 @@ def send_otp_email(email: str, otp: str, name: str) -> None:
         for host in os.getenv("SMTP_HOSTS", os.getenv("SMTP_HOST", "smtp.zoho.com")).split(",")
         if host.strip()
     ]
-    smtp_port = int(os.getenv("SMTP_PORT", "587"))
-    smtp_security = os.getenv("SMTP_SECURITY", "starttls").strip().lower()
+    smtp_configs = [
+        ("starttls", 587),
+        ("ssl", 465),
+    ]
+
+    if os.getenv("SMTP_PORT") or os.getenv("SMTP_SECURITY"):
+        smtp_configs.insert(
+            0,
+            (
+                os.getenv("SMTP_SECURITY", "starttls").strip().lower(),
+                int(os.getenv("SMTP_PORT", "587")),
+            ),
+        )
 
     if not zoho_email or not zoho_app_password:
         raise RuntimeError("ZOHO_EMAIL and ZOHO_APP_PASSWORD are required")
@@ -162,27 +173,29 @@ def send_otp_email(email: str, otp: str, name: str) -> None:
     errors: list[str] = []
 
     for smtp_host in smtp_hosts:
-        try:
-            if smtp_security == "ssl":
-                server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=20)
-            else:
-                server = smtplib.SMTP(smtp_host, smtp_port, timeout=20)
+        for smtp_security, smtp_port in smtp_configs:
+            label = f"{smtp_host}:{smtp_port}/{smtp_security}"
+            try:
+                if smtp_security == "ssl":
+                    server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=20)
+                else:
+                    server = smtplib.SMTP(smtp_host, smtp_port, timeout=20)
 
-            with server:
-                if smtp_security != "ssl":
-                    server.starttls()
-                server.login(zoho_email, zoho_app_password)
-                server.sendmail(zoho_email, [email], message.as_string())
-                return
-        except smtplib.SMTPAuthenticationError as exc:
-            errors.append(f"{smtp_host}: authentication failed ({exc.smtp_code})")
-        except Exception as exc:
-            errors.append(f"{smtp_host}: {exc}")
+                with server:
+                    if smtp_security != "ssl":
+                        server.starttls()
+                    server.login(zoho_email, zoho_app_password)
+                    server.sendmail(zoho_email, [email], message.as_string())
+                    return
+            except smtplib.SMTPAuthenticationError as exc:
+                errors.append(f"{label}: authentication failed ({exc.smtp_code})")
+            except Exception as exc:
+                errors.append(f"{label}: {exc}")
 
     raise RuntimeError(
-        "Zoho SMTP login failed. Tried "
+        "Zoho SMTP connection failed. Tried "
         + ", ".join(errors)
-        + ". Regenerate the Zoho app password and confirm the correct Zoho data-center SMTP host."
+        + ". Render free may block outbound SMTP ports; use a paid Render instance or an HTTPS email API provider."
     )
 
 
