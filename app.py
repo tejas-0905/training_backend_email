@@ -16,23 +16,22 @@ load_dotenv()
 
 app = Flask(__name__)
 
-allowed_origins = [
-    origin.strip()
-    for origin in os.getenv(
-        "FRONTEND_URL",
-        "*",
-    ).split(",")
-    if origin.strip()
-]
-
 CORS(
     app,
     resources={
         r"/api/*": {
-            "origins": allowed_origins,
+            "origins": "*",
         }
     },
 )
+
+
+@app.after_request
+def add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    return response
 
 JWT_SECRET = os.getenv("JWT_SECRET", "change-this-secret")
 JWT_ALGORITHM = "HS256"
